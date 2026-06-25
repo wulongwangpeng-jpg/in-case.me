@@ -1,0 +1,3 @@
+- [Project Identity](memory/project-identity.md) — 不是遗嘱工具，是线上资产分布图+处置意见+平台提取指南
+- [Project Status](memory/project-status.md) — 当前阻塞、下一步可做的事
+- [Quick Reference](memory/quick-reference.md) — 技术栈、部署、关键链接速查

@@ -1,0 +1,109 @@
+---
+title: "Zero-Knowledge Encryption Isn't Magic — Here's How It Actually Works"
+description: "When a service says 'we can't read your data,' what does that actually mean? A plain-English tour of PBKDF2, AES-256-GCM, and browser-side encryption."
+date: "2026-06-27"
+keywords:
+  - zero knowledge encryption explained
+  - how does AES-256-GCM work
+  - PBKDF2 explained
+  - browser-side encryption
+  - encrypted vault security
+---
+
+When a company says "we can't read your data," you should be skeptical. Most cloud storage companies say it. Most of them can absolutely read your data — they just promise not to, until a court order or a breach changes the math.
+
+But some services mean it literally. Not "we choose not to," but "we built it so it's mathematically impossible." That's zero-knowledge encryption. It's not magic — it's three well-understood algorithms chained together in a specific order.
+
+## The Envelope Analogy
+
+Imagine you want to store a letter with a friend, but you don't want them to be able to read it — ever.
+
+1. **You build a lockbox.** Take your password, run it through a machine that spits out an unguessable key. Nobody can reverse the key back to your password, but the same password always produces the same key.
+
+2. **You lock the box.** Put your letter in, lock it with the key. The box is now scrambled bytes. Without the key, gibberish.
+
+3. **You give your friend only the locked box.** They store it on a shelf. If someone breaks into their house, all they find is locked boxes. If your friend gets curious, same thing. Nobody can open it without your key.
+
+4. **Your friend never sees your password.** They never see the key. They only handle locked boxes.
+
+That's zero-knowledge. The service stores your stuff without ever knowing what it is or being able to find out.
+
+So how does this actually work in code?
+
+## Step 1: PBKDF2 — Turning Your Password Into a Key
+
+Passwords are terrible keys. "hunter2" is short, predictable, and easy to guess. Even a good passphrase like "correct-horse-battery-staple" isn't random enough to use as an encryption key directly.
+
+PBKDF2 fixes this. **Password-Based Key Derivation Function 2.** It takes your password and stretches it into a strong, fixed-length key.
+
+```
+Your password:  "my-secure-password"
+Salt:           a random string generated when you sign up
+Iterations:     600,000 rounds of hashing
+Output:         a 256-bit key indistinguishable from random noise
+```
+
+The **salt** is critical. It's a random value stored alongside your encrypted data. It ensures that two people with the same password get completely different derived keys. Without a salt, an attacker could pre-compute keys for common passwords and crack thousands of accounts at once. With a unique salt per user, they have to brute-force each account individually.
+
+The **600,000 iterations** is deliberate. Each hash round takes a tiny fraction of a second — fast enough you don't notice it during login, slow enough that an attacker trying billions of passwords would need centuries.
+
+Result: a 256-bit key that looks like random noise, derived from your human-memorable password, protected against both pre-computed and brute-force attacks.
+
+## Step 2: AES-256-GCM — Locking the Box
+
+Now you have a key. Next step: encrypt your data with it.
+
+AES-256 is the **Advanced Encryption Standard** with a 256-bit key. Battle-tested for over 20 years. The U.S. government uses it for TOP SECRET documents. Nobody has ever broken AES-256 through the algorithm itself — every successful attack has been through key theft or implementation bugs.
+
+GCM stands for **Galois/Counter Mode**. It does two things at once:
+
+1. **Encrypts** — plaintext → ciphertext
+2. **Authenticates** — detects tampering with the ciphertext
+
+That second part matters more than people realize. Without authentication, an attacker with access to your encrypted data could flip bits, corrupt records, or in some cases trick the system into revealing plaintext. GCM catches any modification before decryption.
+
+The output is three pieces:
+
+- **Ciphertext** — scrambled data, safe to store anywhere
+- **IV (Initialization Vector)** — random starting value, different every time
+- **Authentication tag** — the tamper-detection seal
+
+All three are stored together. Only the ciphertext matters for privacy; the IV and tag are needed for decryption but reveal nothing about the content.
+
+## Step 3: Only the Ciphertext Leaves Your Browser
+
+This separates zero-knowledge services from regular ones.
+
+**Regular cloud service:** You type data → server receives plaintext → server encrypts at rest → server holds the key
+
+**Zero-knowledge service:** You type data → browser encrypts locally → only ciphertext reaches the server → server never sees key or plaintext
+
+The difference is who holds the key. First case: the company. Second case: you.
+
+This is why zero-knowledge services can't "reset your password." If they could, they'd have the key — which means the encryption isn't zero-knowledge. The trade-off: **if you lose your password, your data is unrecoverable.** Not a bug. It's what mathematical privacy costs.
+
+## What Happens If the Database Gets Hacked?
+
+This is the test that separates real encryption from security theater.
+
+**Server-side encryption:** attacker gets the database, keys are somewhere on the server or in a connected service (like AWS KMS). They might decrypt everything. This has happened repeatedly — see the LastPass breach: encrypted vaults were stolen alongside enough metadata to launch targeted attacks.
+
+**Zero-knowledge, browser-side encryption:** attacker gets the database and finds nothing but ciphertext. Every vault — AES-256-GCM output. Without the user's password-derived key, it's indistinguishable from random bytes. The attacker has nothing to sell, nothing to leak, nothing to ransom.
+
+A zero-knowledge architecture doesn't prevent breaches. It makes them boring.
+
+## Why This Matters for Digital Safety Nets
+
+For most services, who holds the key is a privacy question. For a check-in switch — a service that releases your data to someone you trust if you stop showing up — it's existential.
+
+If the tool holds your keys, it can read everything: your account list, your contacts, your messages, your crypto wallet notes. An employee, a hacker, a government request — any of them could access everything.
+
+If the tool is zero-knowledge, none of that is possible. The service is just a courier. It holds locked boxes and delivers them to the people you named, on the schedule you set. It doesn't know what's in the boxes and can't be forced to find out.
+
+The only way to verify a zero-knowledge claim: check whether **encryption happens in the browser** and whether **the code is open source**. If you can't confirm both, assume the company can read your data.
+
+---
+
+At [In Case](https://in-case.me), this is how we built our encryption pipeline. PBKDF2 derives your key in the browser. AES-256-GCM encrypts your vault before it leaves your machine. Our servers only see ciphertext. [The source is on GitHub](https://github.com/wulongwangpeng-jpg/in-case.me) — `src/lib/crypto.ts` is the file to read.
+
+And yes: if you lose your password, we can't help you. We think that's a fair deal.

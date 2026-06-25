@@ -1,0 +1,5 @@
+- [唤醒指令](.claude/memory/wake-word.md) — 用户说"唤醒万一"时的标准响应流程
+- [项目核心定位](.claude/memory/project-identity.md) — 万一呢不是遗嘱工具，是线上数字资产分布图+处置意见
+- [项目当前状态](.claude/memory/project-status.md) — 2026-06-23 Blog 5篇上线+Search Console验证+sitemap提交
+- [获客策略](.claude/memory/acquisition-strategy.md) — Reddit 答题 → SEO 博客 → Show HN → PH 完整路线
+- [技术栈速查](.claude/memory/quick-reference.md) — 部署流程、关键链接、安全模型

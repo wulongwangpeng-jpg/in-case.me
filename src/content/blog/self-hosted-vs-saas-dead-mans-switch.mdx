@@ -1,0 +1,106 @@
+---
+title: "Self-Hosted vs SaaS Digital Safety Net: Which One Actually Works?"
+description: "Both approaches have real trade-offs. Here's what actually matters when choosing between running your own check-in switch and trusting a service."
+date: "2026-06-25"
+keywords:
+  - check-in switch comparison
+  - self-hosted dead mans switch
+  - SaaS dead man switch
+  - digital legacy tools compared
+  - encrypted safety net
+---
+
+If you're reading this, you've probably already decided you need a safety net for your digital life — a way for someone you trust to get in if you can't. The question: do you run it yourself, or pay someone else?
+
+It's a genuine trade-off. Self-hosting gives you total control, but the maintenance burden outlasts you by definition. SaaS is zero-effort but means trusting a company with your most sensitive data — or at least, trusting their encryption.
+
+I spent a week digging into both sides. Here's the breakdown.
+
+(A quick note on terminology: these tools are often called "dead man's switches" — the industry name, for better or worse. I'll use "check-in switch" or "safety net" here because they describe what you want it to *do*, not what it implies about you.)
+
+## The Contenders
+
+### Self-Hosted
+
+| Tool | Encryption | Setup | The Catch |
+|------|-----------|-------|-----------|
+| **[LastSignal](https://github.com/lastsignal/lastsignal)** | XChaCha20 + Argon2id | Docker Compose | Someone has to keep the server running |
+| **[Afterkey](https://github.com/afterkey/afterkey)** | AES-256 + Shamir Secret Sharing | CLI / terminal | Your family needs to use a terminal |
+| **[DeadSwitch](https://github.com/deadswitch/deadswitch)** | AES-256-GCM | USB drive | Physical media. What if it gets lost? |
+
+### SaaS
+
+| Tool | Encryption | Model | The Catch |
+|------|-----------|-------|-----------|
+| **[In Case](https://in-case.me)** | PBKDF2 + AES-256-GCM (browser-side) | $23/year or $198 lifetime | Younger product, smaller team |
+| **[Cipherwill](https://cipherwill.com)** | AES-256 (server-side) | Freemium | They hold the keys |
+| **[GoodTrust](https://mygoodtrust.com)** | Standard HTTPS (not E2EE) | $30+/year | Legal-first approach, not encryption-first |
+
+The encryption column alone tells you a lot. But it's not the whole story.
+
+## The Self-Hosted Story
+
+You run a Docker container on a $6/month VPS. It's yours. You control the keys, the data, the uptime. Nobody can shut it down or change the terms. If you know what you're doing, it's the most private option by a mile.
+
+The real problem isn't setup — it's what happens after.
+
+Say you set up LastSignal on a Hetzner box. You configure check-in intervals, write your messages, encrypt everything. It works. Six months go by. You renew the domain, pay the VPS bill, life is good.
+
+Then something happens to you. You're in the hospital. Or you lose your phone. Or worse.
+
+Your credit card expires. The VPS goes unpaid. The domain doesn't renew. Or maybe a Docker update breaks something, or there's a kernel panic, or the TLS cert expires. The switch was supposed to fire, but the server is down.
+
+Your family — who are not sysadmins — now need to:
+1. Figure out which VPS provider you used
+2. Get access to your account (which requires… your password manager)
+3. Navigate a Linux terminal
+4. Extract encrypted data from a Docker volume
+5. Decrypt it using a tool they've never seen
+
+This is the paradox of self-hosting a safety net: **the person who can maintain the server is the person the server is designed to protect.**
+
+To be fair, tools like LastSignal and Afterkey are actively improving. Documentation is getting better. But the fundamental tension remains: the more secure and self-sovereign the setup, the harder it is for a non-technical family member to interact with.
+
+## The SaaS Story
+
+You sign up, configure your check-in schedule, name your contacts, and mostly forget about it. If you stop checking in, the service notifies your contacts and gives them a way to access what you left.
+
+The trade-off is trust. When you use a SaaS safety net, you're betting three things:
+
+1. **Their encryption is real.** "Zero-knowledge" means data is encrypted before it leaves your browser. If they're doing it right, they literally cannot read your vault.
+2. **They'll still exist.** Startups fail. If the company goes under, what happens to your data and your switch?
+3. **They won't change the deal.** Acquisition, pivot, terms of service change. A safety net isn't something you want to migrate every two years.
+
+The encryption question is the easiest to verify — if the code is open source and encryption is client-side, you can check. Longevity is harder because nobody can predict which startups survive.
+
+## The Third Way: Physical / USB
+
+DeadSwitch takes a completely different approach: put your encrypted vault on a USB drive, give it to someone you trust, and give the decryption password to someone else. No server, no subscription, no company.
+
+Elegant in its simplicity. The failure modes are physical: the USB gets lost, damaged, or thrown away by someone who doesn't know what it is. If you move and the USB stays in a drawer, the plan evaporates. And if the person holding the USB and the person holding the password ever compare notes prematurely, your privacy is broken.
+
+## How to Actually Decide
+
+Forget feature matrices. The real question is about your family:
+
+**Can the person who will need to use this actually use it?**
+
+- If your trusted contact is technical — a developer, a sysadmin, someone comfortable with a terminal — self-hosting is solid. They can maintain the server, handle Docker, run CLI tools.
+- If your trusted contact is a normal human — a spouse, a sibling, a friend who uses Gmail and their phone — SaaS is probably the only thing that will actually work. They just need to open a link.
+- If you have nobody technical but don't trust any company — the USB approach is worth considering. Just make sure someone knows what it is and where to find it.
+
+For most people, the honest answer: **self-hosting sounds better in Hacker News comments, but SaaS actually works for real families.**
+
+That doesn't mean SaaS is "better." They solve different constraints. If you have a technical contact and the discipline to maintain infrastructure, self-host. If the person who needs to act isn't you, SaaS removes the single biggest failure mode: your server going dark before your safety net triggers.
+
+## One More Thing: The Encryption Question
+
+Whichever route you take, check whether encryption is **client-side** or **server-side**. Server-side means the company holds your keys and can technically read your data. Client-side means your data is encrypted before it ever touches their servers.
+
+You can usually tell by reading their security docs — or, if they're open source, by checking the code. Look for PBKDF2, Argon2id, or AES-256-GCM in the pipeline. If the docs dance around where encryption happens, assume server-side.
+
+---
+
+I helped build [In Case](https://in-case.me), which is on the SaaS side of this comparison. I'm biased, and you should factor that in. But one thing I'll say regardless of what you pick: **open the encryption code.** If a safety net service won't let you verify how they encrypt your data, that's a red flag. The good ones are transparent about it.
+
+Choose what fits your people, not what sounds best on paper.
