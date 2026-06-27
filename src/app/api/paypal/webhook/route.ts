@@ -30,13 +30,20 @@ export async function POST(req: NextRequest) {
   );
 
   const webhookId = process.env.PAYPAL_WEBHOOK_ID;
-  if (webhookId) {
+
+  // 生产环境必须配置 Webhook ID，否则任何人都能伪造订阅激活事件
+  if (!webhookId) {
+    const isProd = process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
+    if (isProd) {
+      console.error("[PayPal] FATAL: PAYPAL_WEBHOOK_ID not set in production — webhook rejected");
+      return NextResponse.json({ error: "Webhook not configured" }, { status: 500 });
+    }
+    console.log("[PayPal] Webhook ID not configured, skipping signature verification (non-production)");
+  } else {
     if (!verified) {
       console.warn("[PayPal] Webhook signature verification failed");
       return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
     }
-  } else {
-    console.log("[PayPal] Webhook ID not configured, skipping signature verification");
   }
 
   let event: any;

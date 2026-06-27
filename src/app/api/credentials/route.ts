@@ -6,18 +6,45 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOrCreateUser } from "@/lib/auth";
 import { db, credentials, accessLogs } from "@/lib/db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, count } from "drizzle-orm";
 import { generateHumanCode, generateAccessToken } from "@/lib/crypto";
 import {
   getMessengerInviteSMS,
   getMessengerInviteEmail,
   sendNotification,
 } from "@/lib/notify";
+import { isSubscribed, isOverseas } from "@/lib/subscription";
 
 // ──── POST：创建凭证 ────
 export async function POST(req: NextRequest) {
   try {
     const userId = await getOrCreateUser();
+
+    // 海外站免费用户限制：最多 1 个信使
+    if (isOverseas(req)) {
+      const subscribed = await isSubscribed(userId);
+      if (!subscribed) {
+        const [result] = await db
+          .select({ count: count() })
+          .from(credentials)
+          .where(
+            and(
+              eq(credentials.userId, userId),
+              eq(credentials.status, "active")
+            )
+          );
+        if ((result?.count ?? 0) >= 1) {
+          return NextResponse.json(
+            {
+              error:
+                "Free tier includes 1 trusted contact. Subscribe to add more.",
+            },
+            { status: 402 }
+          );
+        }
+      }
+    }
+
     const { messengerEmail, messengerPhone, messengerPhone2, messengerRelation, messengerLabel, vaultIds } = await req.json();
 
     // 生成双码

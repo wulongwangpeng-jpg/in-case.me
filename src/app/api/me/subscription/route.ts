@@ -4,16 +4,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getOrCreateUser } from "@/lib/auth";
-import { getActiveSubscription } from "@/lib/subscription";
-
-function isOverseas(req: NextRequest): boolean {
-  if (process.env.NEXT_PUBLIC_SITE_MODE === "overseas") return true;
-  if (process.env.NEXT_PUBLIC_SITE_MODE === "domestic") return false;
-  const host = req.headers.get("host") || "";
-  if (host.includes("in-case.cn")) return false;
-  if (host.includes("in-case.me")) return true;
-  return false;
-}
+import { getActiveSubscription, isOverseas } from "@/lib/subscription";
 
 export async function GET(req: NextRequest) {
   try {

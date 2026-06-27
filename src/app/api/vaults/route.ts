@@ -8,12 +8,34 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOrCreateUser } from "@/lib/auth";
 import { db, vaults, users } from "@/lib/db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, count } from "drizzle-orm";
+import { isSubscribed, isOverseas } from "@/lib/subscription";
 
 // ──── POST：存入密文 ────
 export async function POST(req: NextRequest) {
   try {
     const userId = await getOrCreateUser();
+
+    // 海外站免费用户限制：最多 3 条密文
+    if (isOverseas(req)) {
+      const subscribed = await isSubscribed(userId);
+      if (!subscribed) {
+        const [result] = await db
+          .select({ count: count() })
+          .from(vaults)
+          .where(eq(vaults.userId, userId));
+        if ((result?.count ?? 0) >= 3) {
+          return NextResponse.json(
+            {
+              error:
+                "Free tier includes 3 encrypted vaults. Subscribe to create more.",
+            },
+            { status: 402 }
+          );
+        }
+      }
+    }
+
     const body = await req.json();
 
     const {

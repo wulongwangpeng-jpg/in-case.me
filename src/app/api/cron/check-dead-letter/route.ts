@@ -14,6 +14,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, users, credentials, accessLogs, vaults, subscriptions } from "@/lib/db";
 import { eq, and, desc, lt, sql } from "drizzle-orm";
+import { isOverseas } from "@/lib/subscription";
 import {
   getDeadLetterSMS,
   getDeadLetterReminder24h,
@@ -187,13 +188,10 @@ export async function GET(req: NextRequest) {
     }
 
     // ──── 2b. 海外站：过滤未订阅用户 ────
-    const isOverseas =
-      process.env.NEXT_PUBLIC_SITE_MODE === "overseas" ||
-      (process.env.NEXT_PUBLIC_APP_URL &&
-        !process.env.NEXT_PUBLIC_APP_URL.includes("in-case.cn"));
+    const overseas = isOverseas();
 
     const mustNotify: typeof expired = [];
-    if (isOverseas) {
+    if (overseas) {
       for (const cred of expired) {
         const [sub] = await db
           .select({ id: subscriptions.id })
@@ -216,10 +214,10 @@ export async function GET(req: NextRequest) {
         checkedAt: now.toISOString(),
         totalChecked: expiredCredentials.length,
         expired: expired.length,
-        skippedNoSubscription: isOverseas ? expired.length : 0,
+        skippedNoSubscription: overseas ? expired.length : 0,
         warnings,
         actions: [],
-        message: isOverseas
+        message: overseas
           ? "无超阈值且已订阅用户"
           : "无超阈值用户",
       });
@@ -368,30 +366,43 @@ async function sendToMessenger(
   credentialId: string,
   userId: string
 ) {
+  const results: Array<{ channel: string; target: string; ok: boolean }> = [];
+
   // 短信
   if (cred.messengerPhone) {
-    await sendNotification("sms", cred.messengerPhone, smsContent, userId, eventType);
+    const r = await sendNotification("sms", cred.messengerPhone, smsContent, userId, eventType);
+    results.push({ channel: "sms", target: cred.messengerPhone, ok: r.success });
   }
   if (cred.messengerPhone2) {
-    await sendNotification("sms", cred.messengerPhone2, smsContent, userId, eventType);
+    const r = await sendNotification("sms", cred.messengerPhone2, smsContent, userId, eventType);
+    results.push({ channel: "sms2", target: cred.messengerPhone2, ok: r.success });
   }
   // 邮件
   if (cred.messengerEmail) {
-    await sendNotification(
+    const r = await sendNotification(
       "email",
       cred.messengerEmail,
       { subject: "【万一呢】数字资产待查看", body: smsContent },
       userId,
       eventType
     );
+    results.push({ channel: "email", target: cred.messengerEmail, ok: r.success });
   }
 
-  // 记录日志
-  await db.insert(accessLogs).values({
-    userId,
-    credentialId,
-    eventType: eventType as any,
-    result: "allowed",
-    reason: `死信通知 [${eventType}] 发送至 ${cred.messengerPhone || cred.messengerEmail}`,
-  });
+  // 至少一条通道发送成功才算数；全部失败则不写日志，下次 cron 重试
+  const anySuccess = results.some((r) => r.ok);
+  const anyAttempted = results.length > 0;
+
+  if (anyAttempted && anySuccess) {
+    const targets = results.filter((r) => r.ok).map((r) => r.target).join(", ");
+    await db.insert(accessLogs).values({
+      userId,
+      credentialId,
+      eventType: eventType as any,
+      result: "allowed",
+      reason: `死信通知 [${eventType}] 已发送至 ${targets}`,
+    });
+  } else if (anyAttempted) {
+    console.error(`[DeadLetter] 全部通道发送失败 [${eventType}] credential=${credentialId}`);
+  }
 }

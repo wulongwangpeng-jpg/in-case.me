@@ -167,7 +167,8 @@ export async function sendNotification(
   target: string,
   content: string | { subject: string; body: string; html?: string },
   userId?: string,
-  reason?: string
+  reason?: string,
+  eventType?: string
 ): Promise<NotifyResult> {
   let result: { success: boolean; message: string };
 
@@ -182,7 +183,7 @@ export async function sendNotification(
     try {
       await db.insert(accessLogs).values({
         userId,
-        eventType: "data_delivered",
+        eventType: (eventType as any) || "data_delivered",
         result: result.success ? "allowed" : "denied",
         reason: reason || `${channel} notification → ${target}: ${result.message}`,
       });

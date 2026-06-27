@@ -9,7 +9,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { db, users, credentials, accessLogs } from "@/lib/db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, or, desc } from "drizzle-orm";
 import {
   getMessengerReply1SMS,
   getMessengerReply2SMS,
@@ -30,12 +30,15 @@ export async function POST(req: NextRequest) {
 
     // 阿里云/Twilio 短信上行推送格式
     const body = await req.json();
-    const fromPhone = body.phone_number || body.from;
+    const rawPhone = (body.phone_number || body.from || "").trim();
     const content = (body.content || body.text || "").trim();
 
-    if (!fromPhone || !content) {
+    if (!rawPhone || !content) {
       return NextResponse.json({ error: "缺少参数" }, { status: 400 });
     }
+
+    // 标准化手机号：去 +86 前缀和空格，统一为 11 位
+    const fromPhone = rawPhone.replace(/^\+86/, "").replace(/\s+/g, "");
 
     // 解析回复
     const isReply1 = content === "1";
@@ -43,6 +46,9 @@ export async function POST(req: NextRequest) {
     const replyValue = isReply1 ? "1" : isReply2 ? "2" : null;
 
     // ──── 查找该手机号关联的信使凭证 ────
+    // 兼容用户输入时可能带 +86 前缀或纯 11 位两种格式
+    const phoneWith86 = `+86${fromPhone}`;
+
     const activeCreds = await db
       .select({
         id: credentials.id,
@@ -57,8 +63,10 @@ export async function POST(req: NextRequest) {
       .where(
         and(
           eq(credentials.status, "active"),
-          // 匹配主号码或备用号码
-          eq(credentials.messengerPhone, fromPhone)
+          or(
+            eq(credentials.messengerPhone, fromPhone),
+            eq(credentials.messengerPhone, phoneWith86)
+          )
         )
       );
 
@@ -77,7 +85,10 @@ export async function POST(req: NextRequest) {
       .where(
         and(
           eq(credentials.status, "active"),
-          eq(credentials.messengerPhone2, fromPhone)
+          or(
+            eq(credentials.messengerPhone2, fromPhone),
+            eq(credentials.messengerPhone2, phoneWith86)
+          )
         )
       );
 

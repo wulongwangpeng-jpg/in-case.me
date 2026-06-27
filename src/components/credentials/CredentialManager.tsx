@@ -100,7 +100,10 @@ export function CredentialManager() {
         }),
       });
 
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || t.common.error);
+      }
 
       const cred = await res.json();
       setCredentials((prev) => [cred, ...prev]);
@@ -118,8 +121,8 @@ export function CredentialManager() {
         status: "active",
         createdAt: cred.createdAt,
       });
-    } catch {
-      toast.error(t.common.error);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t.common.error);
     } finally {
       setCreating(false);
     }
