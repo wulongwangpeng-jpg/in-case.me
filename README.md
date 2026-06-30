@@ -1,36 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# In Case &mdash; Your Digital Safety Net
 
-## Getting Started
+**The only browser-side encrypted vault that your trusted contacts can open with just a link.**
 
-First, run the development server:
+[![AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-green)](LICENSE)
+[![Web Crypto API](https://img.shields.io/badge/encryption-AES--256--GCM-blue)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API)
+[![Zero Knowledge](https://img.shields.io/badge/architecture-zero--knowledge-purple)](https://in-case.me)
+[![Live](https://img.shields.io/badge/live-in--case.me-warm)](https://in-case.me)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+---
+
+## The Problem
+
+Your partner can't log into your accounts. Your co-founder doesn't know where the domains are registered. Your family has no idea which banks you use.
+
+Most tools that try to solve this are CLI-based, USB-reliant, or require the people you trust to install software. The non-technical people in your life — the ones who actually need access — are left out.
+
+## What In Case Does
+
+- **List your accounts** — banking, crypto, domains, email, subscriptions, everything
+- **Encrypt in your browser** — AES-256-GCM via Web Crypto API, zero-knowledge
+- **Set a check-in timer** — if you go silent for your chosen period, access is released
+- **Choose who sees what** — spouse gets banking, business partner gets domains
+- **They just click a link** — no CLI, no USB, no app install
+
+## How It Works
+
+```
+Your Browser (encrypt) ──→ Server stores ciphertext ──→ Contact opens link (decrypt)
+         ↑                                                          ↑
+    Only you have the key                               They get it after your quiet period
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+1. Generate an AES-256-GCM key in your browser
+2. Encrypt vault items before uploading — the server never sees plaintext
+3. Add trusted contacts (email or phone)
+4. If you miss your check-in, contacts receive a link and decryption key
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+**We cannot access your data. Not because we promise — because we don't have the key.**
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Tech Stack
 
-## Learn More
+| Layer | Technology |
+|-------|-----------|
+| Framework | Next.js 16 (App Router) |
+| Encryption | Web Crypto API — AES-256-GCM + PBKDF2 |
+| Database | Supabase |
+| Payments | PayPal |
+| Email | Resend |
+| Hosting | Vercel |
 
-To learn more about Next.js, take a look at the following resources:
+## Live
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+**[in-case.me](https://in-case.me)** — $23/year or $198 lifetime. Free tier: 3 vault items + 1 contact.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Free Tools
 
-## Deploy on Vercel
+All browser-side, zero network requests, nothing stored:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Tool | Link |
+|------|------|
+| Password Strength Checker | [in-case.me/tools/password-checker](https://in-case.me/tools/password-checker) |
+| AES-256-GCM Encryption Demo | [in-case.me/tools/aes-demo](https://in-case.me/tools/aes-demo) |
+| Digital Asset Inventory | [in-case.me/tools/asset-checklist](https://in-case.me/tools/asset-checklist) |
+| Account Handover Checklist | [in-case.me/tools/account-audit](https://in-case.me/tools/account-audit) |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Open Source
+
+AGPL-3.0. Built in the open. Independent, bootstrapped, solo dev.
+
+The code you're reading powers [in-case.me](https://in-case.me) — not a demo, not a subset. The encryption runs in your browser. Verify it yourself.
+
+## Why AGPL?
+
+Because zero-knowledge means nothing if you can't verify the client code. AGPL keeps the entire stack transparent — you can audit every line, run it yourself, and trust that the encryption happens where we say it happens.
